@@ -54,11 +54,13 @@ module Text.PrettyPrint.Boxes where
 
 --     ) where
 
-import Prelude
+import Prelude hiding (bottom, top)
 
+import Data.Array as Array
 import Data.Char
 -- import Data.Foldable
 import Data.Generic
+import Data.Maybe
 import Data.String
 
 -- import Data.String (words, unwords)
@@ -308,28 +310,28 @@ alignVert a r (Box b) = align AlignFirst a r (b.cols) (Box b)
 align :: Alignment -> Alignment -> Int -> Int -> Box -> Box
 align ah av r c bx = createBox r c (SubBox ah av bx)
 
--- -- | Move a box \"up\" by putting it in a larger box with extra rows,
--- -- | aligned to the top.  See the disclaimer for 'moveLeft'.
--- moveUp :: Int -> Box -> Box
--- moveUp n b = alignVert top (rows b + n) b
+-- | Move a box \"up\" by putting it in a larger box with extra rows,
+-- | aligned to the top.  See the disclaimer for 'moveLeft'.
+moveUp :: Int -> Box -> Box
+moveUp n (Box b) = alignVert top (b.rows + n) (Box b)
 
--- -- | Move a box down by putting it in a larger box with extra rows,
--- -- | aligned to the bottom.  See the disclaimer for 'moveLeft'.
--- moveDown :: Int -> Box -> Box
--- moveDown n b = alignVert bottom (rows b + n) b
+-- | Move a box down by putting it in a larger box with extra rows,
+-- | aligned to the bottom.  See the disclaimer for 'moveLeft'.
+moveDown :: Int -> Box -> Box
+moveDown n (Box b) = alignVert bottom (b.rows + n) (Box b)
 
--- -- | Move a box left by putting it in a larger box with extra columns,
--- -- | aligned left.  Note that the name of this function is
--- -- | something of a white lie, as this will only result in the box
--- -- | being moved left by the specified amount if it is already in a
--- -- | larger right-aligned context.
--- moveLeft :: Int -> Box -> Box
--- moveLeft n b = alignHoriz left (cols b + n) b
+-- | Move a box left by putting it in a larger box with extra columns,
+-- | aligned left.  Note that the name of this function is
+-- | something of a white lie, as this will only result in the box
+-- | being moved left by the specified amount if it is already in a
+-- | larger right-aligned context.
+moveLeft :: Int -> Box -> Box
+moveLeft n (Box b) = alignHoriz left (b.cols + n) (Box b)
 
--- -- | Move a box right by putting it in a larger box with extra
--- -- | columns, aligned right.  See the disclaimer for 'moveLeft'.
--- moveRight :: Int -> Box -> Box
--- moveRight n b = alignHoriz right (cols b + n) b
+-- | Move a box right by putting it in a larger box with extra
+-- | columns, aligned right.  See the disclaimer for 'moveLeft'.
+moveRight :: Int -> Box -> Box
+moveRight n (Box b) = alignHoriz right (b.cols + n) (Box b)
 
 -- --------------------------------------------------------------------------------
 -- --  Implementation  ------------------------------------------------------------
@@ -340,15 +342,17 @@ align ah av r c bx = createBox r c (SubBox ah av bx)
 -- render :: Box -> String
 -- render = unlines . renderBox
 
--- -- XXX make QC properties for takeP
+-- XXX make QC properties for takeP
 
--- -- | \"Padded take\": `takeP a n xs` is the same as `take n xs`, if `n
--- -- | <= length xs`; otherwise it is `xs` followed by enough copies of
--- -- | `a` to make the length equal to `n`.
--- takeP :: a -> Int -> [a] -> [a]
--- takeP _ n _      | n <= 0 = []
--- takeP b n []              = replicate n b
--- takeP b n (x:xs)          = x : takeP b (n-1) xs
+-- | \"Padded take\": `takeP a n xs` is the same as `take n xs`, if `n
+-- | <= length xs`; otherwise it is `xs` followed by enough copies of
+-- | `a` to make the length equal to `n`.
+takeP :: forall a . a -> Int -> Array a -> Array a
+takeP _ n _      | n <= 0 = []
+takeP b n array =
+    case Array.uncons array of
+        Just { head: head, tail: tail } -> head `Array.cons` takeP b (n - 1) tail
+        Nothing -> Array.replicate n b
 
 -- -- | `takePA ` is like 'takeP', but with alignment.  That is, we
 -- -- | imagine a copy of `xs` extended infinitely on both sides with
@@ -368,9 +372,9 @@ align ah av r c bx = createBox r c (SubBox ah av bx)
 --         numRev AlignCenter1  n = (n+1) `div` 2
 --         numRev AlignCenter2  n = n `div` 2
 
--- -- | Generate a string of spaces.
--- blanks :: Int -> String
--- blanks = flip replicate ' '
+-- | Generate a string of spaces.
+blanks :: Int -> String
+blanks = fromCharArray <<< flip Array.replicate ' '
 
 -- -- | Render a box as a list of lines.
 -- renderBox :: Box -> [String]
@@ -399,9 +403,9 @@ align ah av r c bx = createBox r c (SubBox ah av bx)
 -- renderBoxWithCols :: Int -> Box -> [String]
 -- renderBoxWithCols c b = renderBox (b{cols = c})
 
--- -- | Resize a rendered list of lines.
--- resizeBox :: Int -> Int -> [String] -> [String]
--- resizeBox r c = takeP (blanks c) r . map (takeP ' ' c)
+-- | Resize a rendered list of lines.
+resizeBox :: Int -> Int -> Array String -> Array String
+resizeBox r c = takeP (blanks c) r <<< map (fromCharArray <<< takeP ' ' c <<< toCharArray)
 
 -- -- | Resize a rendered list of lines, using given alignments.
 -- resizeBoxAligned :: Int -> Int -> Alignment -> Alignment -> [String] -> [String]
