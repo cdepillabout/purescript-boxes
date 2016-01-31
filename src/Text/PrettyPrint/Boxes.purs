@@ -65,16 +65,6 @@ import Data.Profunctor.Strong
 import Data.String
 import Data.Tuple
 
--- import Data.String (words, unwords)
--- import Data.List (words, unwords)
-
--- import Data.String (IsString(..))
-
--- import Control.Arrow ((***), first)
--- import Data.List (foldl', intersperse)
-
--- import Data.List.Split (chunksOf)
-
 -- | The basic data type.  A box has a specified size and some sort of
 -- | contents.
 newtype Box = Box { rows    :: Int
@@ -250,49 +240,67 @@ text t = createBox 1 (length t) (Text t)
 --          . getLines
 --          $ foldl' addWordP (emptyPara n) (map mkWord . words $ t)
 
--- data Para = Para { paraWidth   :: Int
---                  , paraContent :: ParaContent
---                  }
--- data ParaContent = Block { fullLines :: [Line]
---                          , lastLine  :: Line
---                          }
+data Para = Para { width   :: Int
+                 , content :: ParaContent
+                 }
 
--- emptyPara :: Int -> Para
--- emptyPara pw = Para pw (Block [] (Line 0 []))
+newtype ParaContent = Block { fullLines :: Array Line
+                            , lastLine  :: Line
+                            }
 
--- getLines :: Para -> [String]
--- getLines (Para _ (Block ls l))
---   | lLen l == 0 = process ls
---   | otherwise   = process (l:ls)
---   where process = map (unwords . reverse . map getWord . getWords) . reverse
+emptyPara :: Int -> Para
+emptyPara pw = Para { width:   pw
+                    , content: Block { fullLines: []
+                                     , lastLine:  Line { len: 0, words: [] }
+                                     }
+                    }
 
--- data Line = Line { lLen :: Int, getWords :: [Word] }
+getLines :: Para -> Array String
+getLines (Para { width: _, content: Block { fullLines: ls, lastLine: l@(Line { len: lastLineLength, words: _ }) } })
+  | lastLineLength == 0 = getLines' ls
+  | otherwise           = getLines' (l `Array.cons` ls)
 
--- mkLine :: [Word] -> Line
--- mkLine ws = Line (sum (map ((+1) . wLen) ws) - 1) ws
+getLines' :: Array Line -> Array String
+getLines' = map (unwords <<< Array.reverse <<< map (_.word <<< unWord) <<< _.words <<< unLine) <<< Array.reverse
 
--- startLine :: Word -> Line
--- startLine = mkLine . (:[])
 
--- data Word = Word { wLen :: Int, getWord  :: String }
+newtype Line = Line { len :: Int, words :: Array Word }
 
--- mkWord :: String -> Word
--- mkWord w = Word (length w) w
+unLine :: Line -> { len :: Int, words :: Array Word }
+unLine (Line line) = line
+
+mkLine :: Array Word -> Line
+mkLine ws = Line { len: sum wordLengths - 1, words: ws }
+  where
+    wordLengths :: Array Int
+    wordLengths = map (\(Word word) -> 1 + word.len) ws
+
+startLine :: Word -> Line
+startLine word = mkLine [word]
+
+newtype Word = Word { len :: Int, word :: String }
+
+unWord :: Word -> { len :: Int, word :: String }
+unWord (Word word) = word
+
+mkWord :: String -> Word
+mkWord w = Word { len: length w, word: w }
 
 -- addWordP :: Para -> Word -> Para
 -- addWordP (Para pw (Block fl l)) w
 --   | wordFits pw w l = Para pw (Block fl (addWordL w l))
 --   | otherwise       = Para pw (Block (l:fl) (startLine w))
 
--- addWordL :: Word -> Line -> Line
--- addWordL w (Line len ws) = Line (len + wLen w + 1) (w:ws)
+addWordL :: Word -> Line -> Line
+addWordL (Word w) (Line { len: len, words: ws }) =
+    Line { len: len + w.len + 1, words: Word w `Array.cons` ws }
 
--- wordFits :: Int -> Word -> Line -> Bool
+-- wordFits :: Int -> Word -> Line -> Boolean
 -- wordFits pw w l = lLen l == 0 || lLen l + wLen w + 1 <= pw
 
--- --------------------------------------------------------------------------------
--- --  Alignment  -----------------------------------------------------------------
--- --------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+--  Alignment  -----------------------------------------------------------------
+--------------------------------------------------------------------------------
 
 -- | `alignHoriz algn n bx` creates a box of width `n`, with the
 -- | contents and height of `bx`, horizontally aligned according to
@@ -335,14 +343,14 @@ moveLeft n (Box b) = alignHoriz left (b.cols + n) (Box b)
 moveRight :: Int -> Box -> Box
 moveRight n (Box b) = alignHoriz right (b.cols + n) (Box b)
 
--- --------------------------------------------------------------------------------
--- --  Implementation  ------------------------------------------------------------
--- --------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+--  Implementation  ------------------------------------------------------------
+--------------------------------------------------------------------------------
 
--- -- | Render a 'Box' as a String, suitable for writing to the screen or
--- -- | a file.
--- render :: Box -> String
--- render = unlines . renderBox
+-- | Render a 'Box' as a String, suitable for writing to the screen or
+-- | a file.
+render :: Box -> String
+render = unlines <<< renderBox
 
 -- XXX make QC properties for takeP
 
@@ -435,3 +443,16 @@ zipWithDefaults defaultA defaultB f xs ys = Array.reverse $ go xs ys []
                 go [] bTail $ Array.cons (f defaultA bHead) acc
             Tuple (Just { head: aHead, tail: aTail }) (Just { head: bHead, tail: bTail }) ->
                 go aTail bTail $ Array.cons (f aHead bHead) acc
+
+unwords :: Array String -> String
+unwords = foldl f ""
+  where
+    f :: String -> String -> String
+    f "" a = a
+    f acc a = acc <> " " <> a
+
+unlines :: Array String -> String
+unlines = foldl f ""
+  where
+    f :: String -> String -> String
+    f acc a = acc <> a <> "\n"
