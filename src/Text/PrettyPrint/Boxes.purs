@@ -58,10 +58,12 @@ import Prelude hiding (bottom, top)
 
 import Data.Array as Array
 import Data.Char
--- import Data.Foldable
+import Data.Foldable
 import Data.Generic
 import Data.Maybe
+import Data.Profunctor.Strong
 import Data.String
+import Data.Tuple
 
 -- import Data.String (words, unwords)
 -- import Data.List (words, unwords)
@@ -354,63 +356,82 @@ takeP b n array =
         Just { head: head, tail: tail } -> head `Array.cons` takeP b (n - 1) tail
         Nothing -> Array.replicate n b
 
--- -- | `takePA ` is like 'takeP', but with alignment.  That is, we
--- -- | imagine a copy of `xs` extended infinitely on both sides with
--- -- | copies of `a`, and a window of size `n` placed so that `xs` has
--- -- | the specified alignment within the window; `takePA algn a n xs`
--- -- | returns the contents of this window.
--- takePA :: Alignment -> a -> Int -> [a] -> [a]
--- takePA c b n = glue . (takeP b (numRev c n) *** takeP b (numFwd c n)) . split
---   where split t = first reverse . splitAt (numRev c (length t)) $ t
---         glue    = uncurry (++) . first reverse
---         numFwd AlignFirst    n = n
---         numFwd AlignLast     _ = 0
---         numFwd AlignCenter1  n = n `div` 2
---         numFwd AlignCenter2  n = (n+1) `div` 2
---         numRev AlignFirst    _ = 0
---         numRev AlignLast     n = n
---         numRev AlignCenter1  n = (n+1) `div` 2
---         numRev AlignCenter2  n = n `div` 2
+-- | `takePA ` is like 'takeP', but with alignment.  That is, we
+-- | imagine a copy of `xs` extended infinitely on both sides with
+-- | copies of `a`, and a window of size `n` placed so that `xs` has
+-- | the specified alignment within the window; `takePA algn a n xs`
+-- | returns the contents of this window.
+takePA :: forall a . Alignment -> a -> Int -> Array a -> Array a
+takePA c b n = glue <<< (takeP b (numRev c n) *** takeP b (numFwd c n)) <<< split
+  where
+    split :: Array a -> Tuple (Array a) (Array a)
+    split t = first Array.reverse $ splitAt (numRev c (Array.length t)) t
+
+    splitAt :: Int -> Array a -> Tuple (Array a) (Array a)
+    splitAt m arr = Tuple (Array.take m arr) (Array.drop m arr)
+
+    glue :: Tuple (Array a) (Array a) -> Array a
+    glue = uncurry (<>) <<< first Array.reverse
+
+    numFwd :: Alignment -> Int -> Int
+    numFwd AlignFirst    n = n
+    numFwd AlignLast     _ = 0
+    numFwd AlignCenter1  n = n `div` 2
+    numFwd AlignCenter2  n = (n+1) `div` 2
+
+    numRev :: Alignment -> Int -> Int
+    numRev AlignFirst    _ = 0
+    numRev AlignLast     n = n
+    numRev AlignCenter1  n = (n+1) `div` 2
+    numRev AlignCenter2  n = n `div` 2
 
 -- | Generate a string of spaces.
 blanks :: Int -> String
 blanks = fromCharArray <<< flip Array.replicate ' '
 
--- -- | Render a box as a list of lines.
--- renderBox :: Box -> [String]
+-- | Render a box as a list of lines.
+renderBox :: Box -> Array String
+renderBox (Box { rows: r, cols: c, content: Blank }) =
+    resizeBox r c [""]
+renderBox (Box { rows: r, cols: c, content: Text t }) =
+    resizeBox r c [t]
+renderBox (Box { rows: r, cols: c, content: Row bs }) =
+    resizeBox r c <<< merge $ map (renderBoxWithRows r) bs
+  where
+    merge :: Array (Array String) -> Array String
+    merge = foldr (zipWithDefaults "" "" (<>)) []
+renderBox (Box { rows: r, cols: c, content: Col bs }) =
+    resizeBox r c $ Array.concatMap (renderBoxWithCols c) bs
+renderBox (Box { rows: r, cols: c, content: SubBox ha va b}) =
+    resizeBoxAligned r c ha va $ renderBox b
 
--- renderBox (Box r c Blank)            = resizeBox r c [""]
--- renderBox (Box r c (Text t))         = resizeBox r c [t]
--- renderBox (Box r c (Row bs))         = resizeBox r c
---                                        . merge
---                                        . map (renderBoxWithRows r)
---                                        $ bs
---                            where merge = foldr (zipWith (++)) (repeat [])
+-- | Render a box as a list of lines, using a given number of rows.
+renderBoxWithRows :: Int -> Box -> Array String
+renderBoxWithRows r (Box b) = renderBox $ Box b { rows = r }
 
--- renderBox (Box r c (Col bs))         = resizeBox r c
---                                        . concatMap (renderBoxWithCols c)
---                                        $ bs
-
--- renderBox (Box r c (SubBox ha va b)) = resizeBoxAligned r c ha va
---                                        . renderBox
---                                        $ b
-
--- -- | Render a box as a list of lines, using a given number of rows.
--- renderBoxWithRows :: Int -> Box -> [String]
--- renderBoxWithRows r b = renderBox (b{rows = r})
-
--- -- | Render a box as a list of lines, using a given number of columns.
--- renderBoxWithCols :: Int -> Box -> [String]
--- renderBoxWithCols c b = renderBox (b{cols = c})
+-- | Render a box as a list of lines, using a given number of columns.
+renderBoxWithCols :: Int -> Box -> Array String
+renderBoxWithCols c (Box b) = renderBox (Box b { cols = c })
 
 -- | Resize a rendered list of lines.
 resizeBox :: Int -> Int -> Array String -> Array String
 resizeBox r c = takeP (blanks c) r <<< map (fromCharArray <<< takeP ' ' c <<< toCharArray)
 
--- -- | Resize a rendered list of lines, using given alignments.
--- resizeBoxAligned :: Int -> Int -> Alignment -> Alignment -> [String] -> [String]
--- resizeBoxAligned r c ha va = takePA va (blanks c) r . map (takePA ha ' ' c)
+-- | Resize a rendered list of lines, using given alignments.
+resizeBoxAligned :: Int -> Int -> Alignment -> Alignment -> Array String -> Array String
+resizeBoxAligned r c ha va = takePA va (blanks c) r <<< map (fromCharArray <<< takePA ha ' ' c <<< toCharArray)
 
--- -- | A convenience function for rendering a box to stdout.
--- printBox :: Box -> IO ()
--- printBox = putStr . render
+zipWithDefaults :: forall a b c . a -> b -> (a -> b -> c) -> Array a -> Array b -> Array c
+zipWithDefaults defaultA defaultB f xs ys = Array.reverse $ go xs ys []
+  where
+    go :: Array a -> Array b -> Array c -> Array c
+    go as bs acc =
+        case Tuple (Array.uncons as) (Array.uncons bs) of
+            Tuple Nothing Nothing ->
+                acc
+            Tuple (Just { head: aHead, tail: aTail }) Nothing ->
+                go aTail [] $ Array.cons (f aHead defaultB) acc
+            Tuple Nothing (Just { head: bHead, tail: bTail }) ->
+                go [] bTail $ Array.cons (f defaultA bHead) acc
+            Tuple (Just { head: aHead, tail: aTail }) (Just { head: bHead, tail: bTail }) ->
+                go aTail bTail $ Array.cons (f aHead bHead) acc
