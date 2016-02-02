@@ -13,7 +13,8 @@
   "dependencies": {
     "purescript-prelude": "^0.1",
     "purescript-generics": "^0.7",
-    "purescript-profunctor": "^0.3"
+    "purescript-profunctor": "^0.3",
+    "purescript-words-lines": "^0.0.2"
   },
   "repository": {
     "type": "git",

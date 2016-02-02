@@ -1,5 +1,5 @@
 
-purescript-boxses
+purescript-boxes
 =====================================
 
 [![Build

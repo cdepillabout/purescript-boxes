@@ -57,6 +57,7 @@ module Text.PrettyPrint.Boxes where
 import Prelude hiding (bottom, top)
 
 import Data.Array as Array
+import Data.Array.WordsLines (unwords, unlines)
 import Data.Char
 import Data.Foldable
 import Data.Generic
@@ -234,11 +235,11 @@ text t = createBox 1 (length t) (Text t)
 -- mkParaBox :: Alignment -> Int -> [String] -> Box
 -- mkParaBox a n = alignVert top n . vcat a . map text
 
--- -- | Flow the given text into the given width.
--- flow :: Int -> String -> [String]
--- flow n t = map (take n)
---          . getLines
---          $ foldl' addWordP (emptyPara n) (map mkWord . words $ t)
+-- | Flow the given text into the given width.
+-- flow :: Int -> String -> Array String
+-- flow n t =
+--     map (take n) <<< getLines
+--          $ foldl' addWordP (emptyPara n) (map mkWord $ words t)
 
 data Para = Para { width   :: Int
                  , content :: ParaContent
@@ -286,17 +287,19 @@ unWord (Word word) = word
 mkWord :: String -> Word
 mkWord w = Word { len: length w, word: w }
 
--- addWordP :: Para -> Word -> Para
--- addWordP (Para pw (Block fl l)) w
---   | wordFits pw w l = Para pw (Block fl (addWordL w l))
---   | otherwise       = Para pw (Block (l:fl) (startLine w))
+addWordP :: Para -> Word -> Para
+addWordP (Para { width: pw, content: Block { fullLines: fl, lastLine: l }}) w
+    | wordFits pw w l =
+        Para { width: pw, content: Block { fullLines: fl, lastLine: addWordL w l } }
+    | otherwise       =
+        Para { width: pw, content: Block { fullLines: l `Array.cons` fl, lastLine: startLine w } }
 
 addWordL :: Word -> Line -> Line
 addWordL (Word w) (Line { len: len, words: ws }) =
     Line { len: len + w.len + 1, words: Word w `Array.cons` ws }
 
--- wordFits :: Int -> Word -> Line -> Boolean
--- wordFits pw w l = lLen l == 0 || lLen l + wLen w + 1 <= pw
+wordFits :: Int -> Word -> Line -> Boolean
+wordFits pw (Word w) (Line l) = l.len == 0 || l.len + w.len + 1 <= pw
 
 --------------------------------------------------------------------------------
 --  Alignment  -----------------------------------------------------------------
@@ -443,16 +446,3 @@ zipWithDefaults defaultA defaultB f xs ys = Array.reverse $ go xs ys []
                 go [] bTail $ Array.cons (f defaultA bHead) acc
             Tuple (Just { head: aHead, tail: aTail }) (Just { head: bHead, tail: bTail }) ->
                 go aTail bTail $ Array.cons (f aHead bHead) acc
-
-unwords :: Array String -> String
-unwords = foldl f ""
-  where
-    f :: String -> String -> String
-    f "" a = a
-    f acc a = acc <> " " <> a
-
-unlines :: Array String -> String
-unlines = foldl f ""
-  where
-    f :: String -> String -> String
-    f acc a = acc <> a <> "\n"
