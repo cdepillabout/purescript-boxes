@@ -57,7 +57,7 @@ module Text.PrettyPrint.Boxes where
 import Prelude hiding (bottom, top)
 
 import Data.Array as Array
-import Data.Array.WordsLines (unwords, unlines)
+import Data.Array.WordsLines (words, unwords, unlines)
 import Data.Char
 import Data.Foldable
 import Data.Generic
@@ -72,6 +72,9 @@ newtype Box = Box { rows    :: Int
                   , cols    :: Int
                   , content :: Content
                   }
+
+unBox :: Box -> { rows :: Int, cols :: Int, content :: Content }
+unBox (Box b) = b
 
 derive instance genericBox :: Generic Box
 instance showBox :: Show Box where show = gShow
@@ -172,33 +175,43 @@ text t = createBox 1 (length t) (Text t)
 -- (/+/) :: Box -> Box -> Box
 -- t /+/ b = vcat left [t, emptyBox 1 0, b]
 
--- -- | Glue a list of boxes together horizontally, with the given alignment.
--- hcat :: Foldable f => Alignment -> f Box -> Box
--- hcat a bs = Box h w (Row $ map (alignVert a h) bsl)
---   where
---     (w, h) = sumMax cols 0 rows bsl
---     bsl = toList bs
+-- | Glue a list of boxes together horizontally, with the given alignment.
+hcat :: forall f . (Functor f, Foldable f) => Alignment -> f Box -> Box
+hcat a bs = Box { rows: h, cols: w, content: Row $ map (alignVert a h) bsArray }
+  where
+    w :: Int
+    w = sumBy (_.cols <<< unBox) bsArray
+
+    h :: Int
+    h = maxBy (_.rows <<< unBox) 0 bsArray
+
+    bsArray :: Array Box
+    bsArray = arrayFromFoldable bs
 
 -- -- | `hsep sep a bs` lays out `bs` horizontally with alignment `a`,
 -- -- | with `sep` amount of space in between each.
 -- hsep :: Foldable f => Int -> Alignment -> f Box -> Box
 -- hsep sep a bs = punctuateH a (emptyBox 0 sep) bs
 
--- -- | Glue a list of boxes together vertically, with the given alignment.
--- vcat :: Foldable f => Alignment -> f Box -> Box
--- vcat a bs = Box h w (Col $ map (alignHoriz a w) bsl)
---   where
---     (h, w) = sumMax rows 0 cols bsl
---     bsl = toList bs
+-- | Glue a list of boxes together vertically, with the given alignment.
+vcat :: forall f . (Foldable f, Functor f) => Alignment -> f Box -> Box
+vcat a bs = Box { rows: h, cols: w, content: Col $ map (alignHoriz a w) bsArray }
+  where
+    h :: Int
+    h = sumBy (_.rows <<< unBox) bsArray
 
--- -- Calculate a sum and a maximum over a list in one pass. If the list is
--- -- empty, the maximum is reported as the given default. This would
--- -- normally be done using the foldl library, but we don't want that
--- -- dependency.
--- sumMax :: (Num n, Ord b, Foldable f) => (a -> n) -> b -> (a -> b) -> f a -> (n, b)
--- sumMax f defaultMax g as = foldr go (,) as 0 defaultMax
---   where
---     go a r n b = (r $! f a + n) $! g a `max` b
+    w :: Int
+    w = maxBy (_.cols <<< unBox) 0 bsArray
+
+    bsArray :: Array Box
+    bsArray = arrayFromFoldable bs
+
+sumBy :: forall f a n . (Semiring n, Functor f, Foldable f) => (a -> n) -> f a -> n
+sumBy getN = sum <<< map getN
+
+maxBy :: forall f a n . (Ord n, Functor f, Foldable f) => (a -> n) -> n -> f a -> n
+maxBy getN default = maybe default id <<< maximum <<< map getN
+
 
 -- -- | `vsep sep a bs` lays out `bs` vertically with alignment `a`,
 -- -- | with `sep` amount of space in between each.
@@ -230,16 +243,14 @@ text t = createBox 1 (length t) (Text t)
 -- columns :: Alignment -> Int -> Int -> String -> [Box]
 -- columns a w h t = map (mkParaBox a h) . chunksOf h $ flow w t
 
--- -- | `mkParaBox a n s` makes a box of height `n` with the text `s`
--- -- | aligned according to `a`.
+-- | `mkParaBox a n s` makes a box of height `n` with the text `s`
+-- | aligned according to `a`.
 -- mkParaBox :: Alignment -> Int -> [String] -> Box
 -- mkParaBox a n = alignVert top n . vcat a . map text
 
 -- | Flow the given text into the given width.
--- flow :: Int -> String -> Array String
--- flow n t =
---     map (take n) <<< getLines
---          $ foldl' addWordP (emptyPara n) (map mkWord $ words t)
+flow :: Int -> String -> Array String
+flow n t = map (take n) <<< getLines $ foldl addWordP (emptyPara n) (map mkWord $ words t)
 
 data Para = Para { width   :: Int
                  , content :: ParaContent
@@ -446,3 +457,6 @@ zipWithDefaults defaultA defaultB f xs ys = Array.reverse $ go xs ys []
                 go [] bTail $ Array.cons (f defaultA bHead) acc
             Tuple (Just { head: aHead, tail: aTail }) (Just { head: bHead, tail: bTail }) ->
                 go aTail bTail $ Array.cons (f aHead bHead) acc
+
+arrayFromFoldable :: forall f a . (Foldable f) => f a -> Array a
+arrayFromFoldable = foldr Array.cons []
