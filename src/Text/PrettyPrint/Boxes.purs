@@ -156,24 +156,32 @@ text :: String -> Box
 text t = createBox 1 (length t) (Text t)
 
 -- | Paste two boxes together horizontally, using a default (top)
---   alignment.
--- (<>) :: Box -> Box -> Box
--- l <> r = hcat top [l,r]
+-- | alignment.
+appendHorizTop :: Box -> Box -> Box
+appendHorizTop l r = hcat top [l,r]
+
+infixl 9 appendHorizTop as <<>>
 
 -- -- | Paste two boxes together horizontally with a single intervening
 -- -- | column of space, using a default (top) alignment.
--- (<+>) :: Box -> Box -> Box
--- l <+> r = hcat top [l, emptyBox 0 1, r]
+appendHorizTopExtraCol :: Box -> Box -> Box
+appendHorizTopExtraCol l r = hcat top [l, emptyBox 0 1, r]
 
--- -- | Paste two boxes together vertically, using a default (left)
--- -- | alignment.
--- (//) :: Box -> Box -> Box
--- t // b = vcat left [t,b]
+infixl 9 appendHorizTopExtraCol as <<+>>
 
--- -- | Paste two boxes together vertically with a single intervening row
--- -- | of space, using a default (left) alignment.
--- (/+/) :: Box -> Box -> Box
--- t /+/ b = vcat left [t, emptyBox 1 0, b]
+-- | Paste two boxes together vertically, using a default (left)
+-- | alignment.
+appendVertLeft :: Box -> Box -> Box
+appendVertLeft t b = vcat left [t,b]
+
+infixl 9 appendVertLeft as //
+
+-- | Paste two boxes together vertically with a single intervening row
+-- | of space, using a default (left) alignment.
+appendVertLeftExtraCol :: Box -> Box -> Box
+appendVertLeftExtraCol t b = vcat left [t, emptyBox 1 0, b]
+
+infixl 9 appendVertLeftExtraCol as /+/
 
 -- | Glue a list of boxes together horizontally, with the given alignment.
 hcat :: forall f . (Functor f, Foldable f) => Alignment -> f Box -> Box
@@ -188,10 +196,10 @@ hcat a bs = Box { rows: h, cols: w, content: Row $ map (alignVert a h) bsArray }
     bsArray :: Array Box
     bsArray = arrayFromFoldable bs
 
--- -- | `hsep sep a bs` lays out `bs` horizontally with alignment `a`,
--- -- | with `sep` amount of space in between each.
--- hsep :: Foldable f => Int -> Alignment -> f Box -> Box
--- hsep sep a bs = punctuateH a (emptyBox 0 sep) bs
+-- | `hsep sep a bs` lays out `bs` horizontally with alignment `a`,
+-- | with `sep` amount of space in between each.
+hsep :: forall f . Foldable f => Int -> Alignment -> f Box -> Box
+hsep sep a bs = punctuateH a (emptyBox 0 sep) bs
 
 -- | Glue a list of boxes together vertically, with the given alignment.
 vcat :: forall f . (Foldable f, Functor f) => Alignment -> f Box -> Box
@@ -213,40 +221,40 @@ maxBy :: forall f a n . (Ord n, Functor f, Foldable f) => (a -> n) -> n -> f a -
 maxBy getN default = maybe default id <<< maximum <<< map getN
 
 
--- -- | `vsep sep a bs` lays out `bs` vertically with alignment `a`,
--- -- | with `sep` amount of space in between each.
--- vsep :: Foldable f => Int -> Alignment -> f Box -> Box
--- vsep sep a bs = punctuateV a (emptyBox sep 0) (toList bs)
+-- | `vsep sep a bs` lays out `bs` vertically with alignment `a`,
+-- | with `sep` amount of space in between each.
+vsep :: forall f . Foldable f => Int -> Alignment -> f Box -> Box
+vsep sep a bs = punctuateV a (emptyBox sep 0) (arrayFromFoldable bs)
 
--- -- | `punctuateH a p bs` horizontally lays out the boxes `bs` with a
--- -- | copy of `p` interspersed between each.
--- punctuateH :: Foldable f => Alignment -> Box -> f Box -> Box
--- punctuateH a p bs = hcat a (intersperse p (toList bs))
+-- | `punctuateH a p bs` horizontally lays out the boxes `bs` with a
+-- | copy of `p` interspersed between each.
+punctuateH :: forall f . Foldable f => Alignment -> Box -> f Box -> Box
+punctuateH a p bs = hcat a (intersperse p (arrayFromFoldable bs))
 
--- -- | A vertical version of 'punctuateH'.
--- punctuateV :: Foldable f => Alignment -> Box -> f Box -> Box
--- punctuateV a p bs = vcat a (intersperse p (toList bs))
+-- | A vertical version of 'punctuateH'.
+punctuateV :: forall f . Foldable f => Alignment -> Box -> f Box -> Box
+punctuateV a p bs = vcat a (intersperse p (arrayFromFoldable bs))
 
 -- --------------------------------------------------------------------------------
 -- --  Paragraph flowing  ---------------------------------------------------------
 -- --------------------------------------------------------------------------------
 
--- -- | `para algn w t` is a box of width `w`, containing text `t`,
--- -- | aligned according to `algn`, flowed to fit within the given
--- -- | width.
--- para :: Alignment -> Int -> String -> Box
--- para a n t = (\ss -> mkParaBox a (length ss) ss) $ flow n t
+-- | `para algn w t` is a box of width `w`, containing text `t`,
+-- | aligned according to `algn`, flowed to fit within the given
+-- | width.
+para :: Alignment -> Int -> String -> Box
+para a n t = (\ss -> mkParaBox a (Array.length ss) ss) $ flow n t
 
--- -- | `columns w h t` is a list of boxes, each of width `w` and height
--- -- | at most `h`, containing text `t` flowed into as many columns as
--- -- | necessary.
--- columns :: Alignment -> Int -> Int -> String -> [Box]
--- columns a w h t = map (mkParaBox a h) . chunksOf h $ flow w t
+-- | `columns w h t` is a list of boxes, each of width `w` and height
+-- | at most `h`, containing text `t` flowed into as many columns as
+-- | necessary.
+columns :: Alignment -> Int -> Int -> String -> Array Box
+columns a w h t = map (mkParaBox a h) <<< chunksOf h $ flow w t
 
 -- | `mkParaBox a n s` makes a box of height `n` with the text `s`
 -- | aligned according to `a`.
--- mkParaBox :: Alignment -> Int -> [String] -> Box
--- mkParaBox a n = alignVert top n . vcat a . map text
+mkParaBox :: Alignment -> Int -> Array String -> Box
+mkParaBox a n = alignVert top n <<< vcat a <<< map text
 
 -- | Flow the given text into the given width.
 flow :: Int -> String -> Array String
@@ -458,5 +466,30 @@ zipWithDefaults defaultA defaultB f xs ys = Array.reverse $ go xs ys []
             Tuple (Just { head: aHead, tail: aTail }) (Just { head: bHead, tail: bTail }) ->
                 go aTail bTail $ Array.cons (f aHead bHead) acc
 
+-- TODO: This is using `Array.cons`, so it will probably be slow...?
 arrayFromFoldable :: forall f a . (Foldable f) => f a -> Array a
 arrayFromFoldable = foldr Array.cons []
+
+-- TODO: This is using `Array.cons`, so it will probably be slow...?
+intersperse :: forall a . a -> Array a -> Array a
+intersperse sep as =
+    case Array.uncons as of
+        Nothing -> []
+        Just {head, tail} -> head `Array.cons` prependToAll sep tail
+
+-- TODO: This is using `Array.cons`, so it will probably be slow...?
+prependToAll :: forall a . a -> Array a -> Array a
+prependToAll sep as =
+    case Array.uncons as of
+        Nothing -> []
+        Just {head, tail} -> sep `Array.cons` (head `Array.cons` prependToAll sep tail)
+
+chunksOf :: forall a . Int -> Array a -> Array (Array a)
+chunksOf n = go []
+  where
+    go :: Array (Array a) -> Array a -> Array (Array a)
+    go accum as =
+        case Array.uncons as of
+            Nothing -> accum
+            Just {head, tail} ->
+                go (Array.take n as `Array.cons` accum) (Array.drop n as)
