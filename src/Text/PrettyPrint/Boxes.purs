@@ -160,28 +160,28 @@ text t = createBox 1 (length t) (Text t)
 appendHorizTop :: Box -> Box -> Box
 appendHorizTop l r = hcat top [l,r]
 
-infixl 9 appendHorizTop as <<>>
+infixl 7 appendHorizTop as <<>>
 
 -- -- | Paste two boxes together horizontally with a single intervening
 -- -- | column of space, using a default (top) alignment.
 appendHorizTopExtraCol :: Box -> Box -> Box
 appendHorizTopExtraCol l r = hcat top [l, emptyBox 0 1, r]
 
-infixl 9 appendHorizTopExtraCol as <<+>>
+infixl 7 appendHorizTopExtraCol as <<+>>
 
 -- | Paste two boxes together vertically, using a default (left)
 -- | alignment.
 appendVertLeft :: Box -> Box -> Box
 appendVertLeft t b = vcat left [t,b]
 
-infixl 9 appendVertLeft as //
+infixl 7 appendVertLeft as //
 
 -- | Paste two boxes together vertically with a single intervening row
 -- | of space, using a default (left) alignment.
 appendVertLeftExtraCol :: Box -> Box -> Box
 appendVertLeftExtraCol t b = vcat left [t, emptyBox 1 0, b]
 
-infixl 9 appendVertLeftExtraCol as /+/
+infixl 7 appendVertLeftExtraCol as /+/
 
 -- | Glue a list of boxes together horizontally, with the given alignment.
 hcat :: forall f . (Functor f, Foldable f) => Alignment -> f Box -> Box
