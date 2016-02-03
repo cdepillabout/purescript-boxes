@@ -1,7 +1,7 @@
 language: node_js
 sudo: false
 node_js:
-    - 0.10
+    - stable
 install:
     - npm install
     - export PATH="node_modules/.bin:$PATH"
@@ -10,4 +10,4 @@ install:
     - bower install
 script:
     - pulp build
-    # - pulp test
+    - pulp test
