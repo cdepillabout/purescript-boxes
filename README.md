@@ -7,7 +7,7 @@ Status](https://travis-ci.org/pbrant/purescript-boxes.svg)](https://travis-ci.or
 
 A pretty-printing library for laying out text in two dimensions, using a simple box model.
 
-This is a PureScript implementation of Haskell's [boxes](https://hackage.haskell.org/package/boxes) libraries.
+This is a PureScript port of Haskell's [boxes](https://hackage.haskell.org/package/boxes) library.
 
 ### Installing
 
