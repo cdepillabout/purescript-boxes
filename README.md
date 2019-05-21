@@ -9,20 +9,12 @@ A pretty-printing library for laying out text in two dimensions, using a simple 
 
 This is a PureScript port of Haskell's [boxes](https://hackage.haskell.org/package/boxes) library.
 
-### Installing
+## Installation
 
 ```sh
-$ npm install bower
-$ ./node_modules/.bin/bower install --save purescript-boxes
+bower install purescript-boxes
 ```
 
-### Building / Testing
+## Documentation
 
-```sh
-$ pulp build
-$ pulp test
-```
-
-### Usage
-
-*TODO*
+Module documentation is [published on Pursuit](http://pursuit.purescript.org/packages/purescript-boxes).
