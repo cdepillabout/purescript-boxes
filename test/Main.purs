@@ -1,9 +1,10 @@
 module Test.Main where
 
 import Prelude
-import Control.Monad.Eff
-import Control.Monad.Eff.Console
 
-main :: forall e. Eff (console :: CONSOLE | e) Unit
+import Effect (Effect)
+import Effect.Console (log)
+
+main :: Effect Unit
 main = do
   log "You should add some tests."
