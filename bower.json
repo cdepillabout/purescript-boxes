@@ -9,7 +9,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git://github.com/pbrant/purescript-boxes.git"
+    "url": "git://github.com/cdepillabout/purescript-boxes.git"
   },
   "dependencies": {
     "purescript-generics-rep": "6.1.1",
