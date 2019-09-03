@@ -280,7 +280,7 @@ emptyPara pw = Para
   }
 
 getLines :: Para -> Array String
-getLines (Para { paraContent: Block { fullLines: ls, lastLine: l@Line ll } })
+getLines (Para { paraContent: Block { fullLines: ls, lastLine: l@(Line ll) } })
   | ll.lLen == 0 = getLines' ls
   | otherwise   = getLines' (Array.cons l ls)
 
