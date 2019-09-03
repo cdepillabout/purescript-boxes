@@ -280,9 +280,9 @@ emptyPara pw = Para
   }
 
 getLines :: Para -> Array String
-getLines (Para { paraContent: Block { fullLines: ls, lastLine: Line ll } })
+getLines (Para { paraContent: Block { fullLines: ls, lastLine: l@(Line ll) } })
   | ll.lLen == 0 = getLines' ls
-  | otherwise   = getLines' (Array.cons (Line l) ls)
+  | otherwise   = getLines' (Array.cons l ls)
 
 getLines' :: Array Line -> Array String
 getLines' = map (unwords <<< Array.reverse <<< map (_.word <<< unwrap) <<< _.words <<< unwrap) <<< Array.reverse
