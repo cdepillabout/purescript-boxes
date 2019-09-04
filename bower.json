@@ -13,10 +13,10 @@
   },
   "dependencies": {
     "purescript-generics-rep": "6.1.1",
-    "purescript-prelude": "^4.0.0",
-    "purescript-profunctor": "^4.0.0",
+    "purescript-prelude": "^4.1.0",
+    "purescript-profunctor": "^4.1.0",
     "purescript-strings": "^4.0.1",
-    "purescript-stringutils": "^0.0.8"
+    "purescript-stringutils": "^0.0.9"
   },
   "devDependencies": {
     "purescript-psci-support": "^4.0.0"
