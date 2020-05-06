@@ -65,7 +65,7 @@ import Data.Newtype (class Newtype, unwrap)
 import Data.Profunctor.Strong (first, (***))
 import Data.String (joinWith, length, take) as String
 import Data.String.CodeUnits (fromCharArray, singleton, toCharArray) as String
-import Data.String.Utils (words)
+import Data.String.Utils (words, trimEnd)
 import Data.Tuple (Tuple(..), uncurry)
 
 -- | The basic data type.  A box has a specified size and some sort of
@@ -365,7 +365,7 @@ moveRight n b = alignHoriz right (cols b + n) b
 -- | Render a `Box` as a String, suitable for writing to the screen or
 -- | a file.
 render :: Box -> String
-render = unlines <<< renderBox
+render = unlines <<< map trimEnd <<< renderBox
 
 -- XXX make QC properties for takeP
 
