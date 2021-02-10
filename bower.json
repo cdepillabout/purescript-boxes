@@ -12,13 +12,16 @@
     "url": "git://github.com/cdepillabout/purescript-boxes.git"
   },
   "dependencies": {
-    "purescript-generics-rep": "6.1.1",
-    "purescript-prelude": "^4.1.0",
+    "purescript-generics-rep": "^6.1.1",
+    "purescript-prelude": "^4.1.1",
     "purescript-profunctor": "^4.1.0",
     "purescript-strings": "^4.0.1",
-    "purescript-stringutils": "^0.0.9"
+    "purescript-stringutils": "^0.0.10"
   },
   "devDependencies": {
     "purescript-psci-support": "^4.0.0"
+  },
+  "resolutions": {
+    "purescript-stringutils": "^0.0.10"
   }
 }
