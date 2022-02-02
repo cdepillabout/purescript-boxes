@@ -1,0 +1,28 @@
+{
+    "name": "purescript-boxes",
+    "license": [
+        "BSD-3-Clause"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/cdepillabout/purescript-boxes"
+    },
+    "ignore": [
+        "**/.*",
+        "node_modules",
+        "bower_components",
+        "output"
+    ],
+    "dependencies": {
+        "purescript-arrays": "^v6.0.1",
+        "purescript-foldable-traversable": "^v5.0.1",
+        "purescript-maybe": "^v5.0.0",
+        "purescript-newtype": "^v4.0.0",
+        "purescript-prelude": "^v5.0.1",
+        "purescript-profunctor": "^v5.0.0",
+        "purescript-psci-support": "^v5.0.0",
+        "purescript-strings": "^v5.0.0",
+        "purescript-stringutils": "^v0.0.11",
+        "purescript-tuples": "^v6.0.1"
+    }
+}
