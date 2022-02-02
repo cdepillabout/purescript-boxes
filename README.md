@@ -2,8 +2,7 @@
 purescript-boxes
 =====================================
 
-[![Build
-Status](https://travis-ci.org/cdepillabout/purescript-boxes.svg)](https://travis-ci.org/cdepillabout/purescript-boxes)
+[![CI](https://github.com/cdepillabout/purescript-boxes/actions/workflows/ci.yml/badge.svg)](https://github.com/cdepillabout/purescript-boxes/actions/workflows/ci.yml)
 
 A pretty-printing library for laying out text in two dimensions, using a simple box model.
 

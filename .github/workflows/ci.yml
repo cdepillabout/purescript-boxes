@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+      - uses: purescript-contrib/setup-purescript@main
+        # with:
+        #   purescript: "latest"
+        #   spago: "latest"
+
+      - uses: actions/cache@v2
+        with:
+          key: ${{ runner.os }}-spago-${{ hashFiles('**/*.dhall') }}
+          path: |
+            .spago
+            output
+
+      - name: Install dependencies
+        run: |
+          spago install
+          spago --config test.dhall install
+
+      - name: Build source
+        run: |
+          spago build --no-install --purs-args '--censor-lib --strict'
+          spago --config test.dhall build --no-install --purs-args '--censor-lib --strict'
+
+      - name: Run tests
+        run: spago --config test.dhall test

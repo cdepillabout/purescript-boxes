@@ -6,3 +6,5 @@
 /src/.webpack.js
 /pursuit.json
 yarn.lock
+.psc-ide-port
+.purs-repl
