@@ -75,17 +75,15 @@ newtype Box = Box { rows    :: Int
                   , content :: Content
                   }
 
-derive instance genericBox :: Generic Box _
 derive instance eqBox :: Eq Box
-derive instance newtypeBox :: Newtype Box _
 instance showBox :: Show Box where
   show (Box b) = "Box " <> show b
 
 cols :: Box -> Int
-cols = _.cols <<< unwrap
+cols (Box box) = box.cols
 
 rows :: Box -> Int
-rows = _.rows <<< unwrap
+rows (Box box) = box.rows
 
 createBox :: Int -> Int -> Content -> Box
 createBox r c content = Box { rows: r, cols: c, content }
@@ -96,10 +94,12 @@ data Alignment = AlignFirst    -- ^ Align at the top/left.
                | AlignCenter2  -- ^ Centered, biased to the bottom/right.
                | AlignLast     -- ^ Align at the bottom/right.
 
-derive instance genericAlignment :: Generic Alignment _
 derive instance eqAlignment :: Eq Alignment
 instance showAlignment :: Show Alignment where
-  show = genericShow
+  show AlignFirst = "AlignFirst"
+  show AlignCenter1 = "AlignCenter1"
+  show AlignCenter2 = "AlignCenter2"
+  show AlignLast = "AlignLast"
 
 -- | Align boxes along their tops.
 top :: Alignment
